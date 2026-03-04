@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>משחק פורים</title>
+
+<style>
+  body{
+    font-family:"Rubik","Heebo","Assistant",Arial,system-ui,sans-serif;
+    background:#1b1b2f;
+    color:white;
+    text-align:center;
+    padding:20px;
+    margin:0;
+  }
+
+  h1{ font-size:32px; margin: 10px 0 12px; font-weight:900; }
+
+  img#childImage{
+    width:100%;
+    max-width:520px;
+    border-radius:20px;
+    margin: 8px auto 16px;
+    display:block;
+    border: 1px solid rgba(255,255,255,0.18);
+    box-shadow: 0 12px 35px rgba(0,0,0,0.25);
+  }
+
+  #answers{ max-width:520px; margin:0 auto; }
+
+  button{
+    display:block;
+    width:100%;
+    margin:10px auto;
+    padding:15px;
+    font-size:22px;
+    font-weight:900;
+    border-radius:15px;
+    border:none;
+    background:#3a86ff;
+    color:white;
+    cursor:pointer;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.22);
+  }
+  button:hover{ background:#265ecf; }
+  button:active{ transform: scale(0.99); }
+
+  #message{ font-size:22px; margin-top:10px; font-weight:900; min-height:28px; }
+
+  /* Overlay */
+  .overlay{
+    position:fixed; inset:0;
+    display:none;
+    align-items:center; justify-content:center;
+    background:rgba(0,0,0,0.80);
+    z-index:9999;
+    padding:18px;
+  }
+  .overlay.show{ display:flex; }
+
+  .card{
+    background:rgba(255,255,255,0.10);
+    border:1px solid rgba(255,255,255,0.18);
+    padding:18px;
+    border-radius:22px;
+    max-width:560px;
+    width:92vw;
+    position:relative;
+    overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+  }
+
+  /* Start */
+  .startImg{
+    width:100%;
+    border-radius:18px;
+    margin-bottom:14px;
+    display:block;
+    border:1px solid rgba(255,255,255,0.16);
+  }
+  .startBtn{
+    background:#22c55e;
+    color:#07110a;
+    font-size:22px;
+    font-weight:1000;
+  }
+  .startBtn:hover{ background:#16a34a; }
+
+  /* Success */
+  .big{ font-size:54px; font-weight:1000; margin:6px 0; }
+  #confetti, #stars{ position:absolute; inset:0; pointer-events:none; }
+  #confetti i{
+    position:absolute; top:-14px;
+    width:10px; height:14px;
+    border-radius:3px; opacity:0.95;
+    animation: fall 900ms linear forwards;
+  }
+  @keyframes fall{
+    from{ transform:translateY(0) rotate(0deg); opacity:1; }
+    to  { transform:translateY(120vh) rotate(180deg); opacity:0; }
+  }
+
+  #stars i{
+    position:absolute;
+    font-size:40px;
+    opacity:0;
+    animation: star 850ms ease-out forwards;
+    filter: drop-shadow(0 10px 18px rgba(0,0,0,0.35));
+  }
+  @keyframes star{
+    0%{ opacity:0; transform: translateY(10px) scale(0.6); }
+    20%{ opacity:1; }
+    100%{ opacity:0; transform: translateY(-80px) scale(1.05); }
+  }
+
+  /* Finish */
+  .finishTitle{ font-size:34px; font-weight:1000; margin:6px 0 10px; }
+  .finishScore{ font-size:22px; font-weight:900; margin:0 0 16px; }
+  .againBtn{ background:#3a86ff; color:#fff; font-size:20px; font-weight:1000; }
+  .againBtn:hover{ background:#265ecf; }
+</style>
+</head>
+
+<body>
+  <h1>🎭 נחש מי התחפש</h1>
+
+  <img id="childImage" alt="תמונה של ילד מחופש">
+
+  <div id="answers"></div>
+  <div id="message"></div>
+
+  <!-- Start -->
+  <div id="startScreen" class="overlay show" aria-live="polite">
+    <div class="card">
+      <img class="startImg" src="img/purim_start.png" alt="מסך פתיחה לפורים">
+      <button class="startBtn" id="startBtn" type="button">בואו נתחיל לשחק</button>
+    </div>
+  </div>
+
+  <!-- Success -->
+  <div id="successScreen" class="overlay" aria-live="polite">
+    <div class="card">
+      <div id="confetti"></div>
+      <div id="stars"></div>
+      <div class="big">👏 כל הכבוד! 🎉</div>
+    </div>
+  </div>
+
+  <!-- Finish -->
+  <div id="finishScreen" class="overlay" aria-live="polite">
+    <div class="card">
+      <div class="finishTitle">🏆 אלופי התחפושות של הגן!</div>
+      <div class="finishScore" id="finishScore"></div>
+      <button class="againBtn" id="againBtn" type="button">שחקו שוב</button>
+    </div>
+  </div>
+
+<script>
+  // --- Elements ---
+  const elChildImage = document.getElementById("childImage");
+  const elAnswers    = document.getElementById("answers");
+  const elMessage    = document.getElementById("message");
+
+  const startScreen  = document.getElementById("startScreen");
+  const successScreen= document.getElementById("successScreen");
+  const finishScreen = document.getElementById("finishScreen");
+  const elFinishScore= document.getElementById("finishScore");
+
+  const confettiBox  = document.getElementById("confetti");
+  const starsBox     = document.getElementById("stars");
+
+  const startBtn     = document.getElementById("startBtn");
+  const againBtn     = document.getElementById("againBtn");
+
+  // --- Data (your kids) ---
+  const kids = [
+    { name:"אלין",  img:"img/alin.jpeg"  },
+    { name:"אלמוג", img:"img/almog.jpeg" },
+    { name:"דן",    img:"img/dan.jpeg"   },
+    { name:"עילאי", img:"img/ilay.jpeg"  },
+    { name:"לין",   img:"img/lin.jpeg"   },
+    { name:"נועה",  img:"img/noya.jpeg"  },
+    { name:"ראם",    img:"img/ram.jpeg"   },
+    { name:"ריאן",  img:"img/rian.jpeg"  },
+    { name:"ריו",   img:"img/rayo.jpeg"  } // ✅ rayo.jpeg לפי התיקייה שלך
+  ];
+
+  const OPTIONS_PER_ROUND = 3;
+
+  let order = [];
+  let idx = 0;
+  let score = 0;
+
+  // --- Audio (works after click) ---
+  let audioCtx = null;
+  function initAudio(){
+    try{
+      if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if(audioCtx.state === "suspended") audioCtx.resume();
+    }catch(e){}
+  }
+  function playSound(){
+    try{
+      if(!audioCtx) return;
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = "triangle";
+      o.frequency.value = 520;
+      g.gain.value = 0.05;
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start();
+      setTimeout(()=>o.stop(), 150);
+    }catch(e){}
+  }
+
+  function shuffle(a){
+    const arr = a.slice();
+    for(let i=arr.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [arr[i],arr[j]] = [arr[j],arr[i]];
+    }
+    return arr;
+  }
+
+  function resetGame(){
+    order = shuffle([...Array(kids.length).keys()]);
+    idx = 0;
+    score = 0;
+  }
+
+  function createConfetti(){
+    confettiBox.innerHTML = "";
+    const colors = ["#ffbe0b","#fb5607","#ff006e","#8338ec","#3a86ff","#2ec4b6"];
+    for(let i=0;i<26;i++){
+      const c = document.createElement("i");
+      c.style.left = Math.random()*100 + "%";
+      c.style.animationDelay = (Math.random()*0.15) + "s";
+      c.style.background = colors[Math.floor(Math.random()*colors.length)];
+      confettiBox.appendChild(c);
+    }
+  }
+
+  function createStars(){
+    starsBox.innerHTML = "";
+    for(let i=0;i<7;i++){
+      const s = document.createElement("i");
+      s.textContent = "⭐";
+      s.style.left = (40 + Math.random()*20) + "%";
+      s.style.top  = (45 + Math.random()*10) + "%";
+      s.style.animationDelay = (Math.random()*0.08) + "s";
+      starsBox.appendChild(s);
+    }
+  }
+
+  function showSuccess(){
+    createConfetti();
+    createStars();
+    successScreen.classList.add("show");
+    playSound();
+    setTimeout(()=>successScreen.classList.remove("show"), 900);
+  }
+
+  function finishGame(){
+    elFinishScore.textContent = `עניתם נכון על ${score} מתוך ${kids.length} 🎉`;
+    finishScreen.classList.add("show");
+  }
+
+  function loadQuestion(){
+    elMessage.textContent = "";
+
+    if(idx >= order.length){
+      finishGame();
+      return;
+    }
+
+    const kidIndex = order[idx];
+    const kid = kids[kidIndex];
+
+    // Image load safety
+    elChildImage.onerror = () => {
+      elMessage.textContent = "⚠️ התמונה לא נטענה — עוברים הלאה";
+      setTimeout(()=>{ idx++; loadQuestion(); }, 700);
+    };
+    elChildImage.src = kid.img + "?v=" + Date.now();
+
+    // Build options: correct + random others
+    const allIdxs = [...Array(kids.length).keys()];
+    const otherIdxs = allIdxs.filter(i => i !== kidIndex);
+    const pickedOthers = shuffle(otherIdxs).slice(0, Math.max(0, OPTIONS_PER_ROUND - 1));
+    const optionIdxs = shuffle([kidIndex, ...pickedOthers]);
+
+    elAnswers.innerHTML = "";
+    optionIdxs.forEach(i=>{
+      const opt = kids[i];
+      const btn = document.createElement("button");
+      btn.textContent = opt.name;
+      btn.onclick = () => {
+        if(opt.name === kid.name){
+          score++;
+          showSuccess();
+          setTimeout(()=>{ idx++; loadQuestion(); }, 950);
+        } else {
+          elMessage.textContent = "❌ לא הפעם — נסו שוב 🙂";
+        }
+      };
+      elAnswers.appendChild(btn);
+    });
+  }
+
+  // Start
+  startBtn.addEventListener("click", () => {
+    initAudio(); // ✅ unlock audio on click
+    startScreen.classList.remove("show");
+    resetGame();
+    loadQuestion();
+  });
+
+  // Again
+  againBtn.addEventListener("click", () => {
+    finishScreen.classList.remove("show");
+    resetGame();
+    loadQuestion();
+  });
+
+  // Basic guard
+  if(kids.length < 2){
+    elMessage.textContent = "צריך לפחות שני ילדים כדי לשחק 🙂";
+  }
+</script>
+
+</body>
+</html>
